@@ -1,545 +1,462 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>高機能YouTubeプレイヤー Ver.2</title>
+    <title>３色混ぜ調色シミュレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* --- 基本スタイルと配色 --- */
-        :root {
-            --bg-color: #1a1a1a;
-            --surface-color: #2c2c2c;
-            --primary-color: #0d6efd;
-            --primary-color-active: #0b5ed7;
-            --text-color: #f0f0f0;
-            --text-muted-color: #aaa;
-            --border-color: #444;
-            --success-color: #198754;
-            --danger-color: #dc3545;
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;700&display=swap');
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-size: 16px;
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+            background-color: #ffffff;
         }
 
-        /* --- コンテナとレイアウト --- */
-        .container {
+        .slider-container input[type="range"] {
+            -webkit-appearance: none;
             width: 100%;
-            max-width: 800px;
-            padding: 1rem;
-            box-sizing: border-box;
-        }
-        
-        h1, h2 {
-            text-align: center;
-            color: var(--text-color);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 0.5rem;
-            margin-top: 1.5rem;
-        }
-
-        /* --- 動画プレイヤーエリア --- */
-        .player-container {
-            margin-bottom: 1rem;
-        }
-        .player-wrapper {
-            position: relative;
-            width: 100%;
-            padding-top: 56.25%; /* 16:9 アスペクト比 */
-            background-color: #000;
-            border-radius: 12px;
-            overflow: hidden;
-            transform-origin: center center;
-            transition: transform 0.3s ease-in-out;
-        }
-
-        #player {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        /* --- カスタムシークバー --- */
-        .seekbar-container {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            width: 100%;
-            margin-top: 0.5rem;
-        }
-        #seek-bar {
-            flex-grow: 1;
-        }
-        .time-display {
-            font-size: 0.9rem;
-            color: var(--text-muted-color);
-            min-width: 90px;
-            text-align: center;
-        }
-
-        /* --- 入力とフォーム --- */
-        .input-group {
-            display: flex;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        
-        .input-group input[type="text"] {
-            flex-grow: 1;
-            padding: 0.75rem;
-            background-color: var(--surface-color);
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            border-radius: 8px;
-            font-size: 1rem;
-            min-width: 0;
-        }
-        .input-group input[type="text"]:focus {
+            height: 8px;
+            border-radius: 4px;
+            background: #d1d5db;
             outline: none;
-            border-color: var(--primary-color);
+            transition: opacity .2s;
         }
 
-        /* --- ボタン共通スタイル --- */
-        button {
-            padding: 0.75rem 1rem;
-            border: none;
-            border-radius: 8px;
-            background-color: var(--primary-color);
-            color: white;
-            font-size: 1rem;
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4f46e5;
             cursor: pointer;
-            transition: background-color 0.2s;
-            font-weight: bold;
-            min-height: 44px; /* モバイルでのタップ領域確保 */
-            box-sizing: border-box;
+            border: 3px solid #ffffff;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
         }
 
-        button:hover:not(:disabled) {
-            background-color: var(--primary-color-active);
+        /* Custom thumb colors */
+        .c-thumb::-webkit-slider-thumb {
+            background: #00bcd4;
         }
 
-        button:disabled {
-            background-color: #555;
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
-        
-        /* --- 操作パネル --- */
-        .controls { display: none; } /* 初期状態は非表示 */
-        .control-group {
-            background-color: var(--surface-color);
-            padding: 1rem;
-            border-radius: 12px;
-            margin-bottom: 1rem;
-        }
-        .control-group h3 {
-            margin-top: 0;
-            margin-bottom: 1rem;
-            font-size: 1.1rem;
-        }
-        .control-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 0.5rem;
+        .m-thumb::-webkit-slider-thumb {
+            background: #e91e63;
         }
 
-        /* --- スライダー共通スタイル --- */
-        .slider-control {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        .slider-control input[type="range"] {
-            flex-grow: 1;
-        }
-        .slider-control .value-display {
-            min-width: 50px;
-            text-align: right;
-            font-weight: bold;
-        }
-        .slider-control .btn-reset {
-            background-color: #6c757d;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.9rem;
-            min-height: auto;
+        .y-thumb::-webkit-slider-thumb {
+            background: #ffeb3b;
         }
 
-        /* --- 機能別ボタンスタイル --- */
-        #loop-toggle.active {
-            background-color: var(--success-color);
+        .k-thumb::-webkit-slider-thumb {
+            background: #4b5563;
         }
-        .btn-delete {
-            background-color: var(--danger-color);
-            font-size: 0.8rem;
-            padding: 0.4rem 0.6rem;
-            min-height: auto;
-        }
-        
-        /* --- 履歴とお気に入りリスト --- */
-        .list-container {
-            max-height: 300px;
-            overflow-y: auto;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 0.5rem;
-        }
-        .list-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0.75rem;
-            border-bottom: 1px solid var(--border-color);
-            transition: background-color 0.2s;
-            gap: 0.5rem;
-        }
-        .list-item:last-child { border-bottom: none; }
-        .list-item.clickable:hover { background-color: #3a3a3a; cursor: pointer; }
-        .list-item .title { flex-grow: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .list-item .timestamp, .list-item .actions { flex-shrink: 0; }
-        .list-item .timestamp { font-size: 0.9rem; color: var(--text-muted-color); }
-        .ab-selector input { margin-left: 5px; }
-        .ab-info { text-align: center; padding: 0.5rem; color: var(--text-muted-color); font-size: 0.9rem; }
-        .ab-info span { font-weight: bold; color: var(--text-color); }
 
+        /* dark gray for K */
+        .ratio-thumb::-webkit-slider-thumb {
+            background: #6366f1;
+        }
+
+        #saturationSlider::-webkit-slider-thumb {
+            background: #3b82f6;
+        }
+
+        #valueSlider::-webkit-slider-thumb {
+            background: #10b981;
+        }
+
+        .shadow-custom {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
     </style>
 </head>
-<body>
 
-    <div class="container">
-        <h1>高機能YouTubeプレイヤー Ver.2</h1>
+<body class="p-4 md:p-8">
 
-        <div class="input-group">
-            <input type="text" id="video-url" placeholder="YouTube動画のURLまたはIDを入力">
-            <button id="load-video">動画を読込</button>
-        </div>
-        
-        <div class="player-container">
-            <div id="player-wrapper" class="player-wrapper">
-                <div id="player"></div>
-            </div>
-            <div class="seekbar-container">
-                <input type="range" id="seek-bar" value="0" min="0" step="1">
-                <div id="time-display" class="time-display">0:00 / 0:00</div>
-            </div>
-            <p id="video-title" style="text-align: center; font-weight: bold; min-height: 1.2em; margin-top: 0.5rem;"></p>
-        </div>
+    <div class="max-w-6xl mx-auto bg-white p-6 md:p-10 rounded-xl shadow-custom border border-gray-200">
+        <p class="text-gray-600 mb-8">3つのベース色（カラーA, B, C）をそれぞれ**CMYK**で作り、それらを指定した割合で混ぜ合わせるシミュレーションです。最終的な色をHSVで調整できます。
+        </p>
 
-        <div id="controls" class="controls">
-            
-            <div class="control-group">
-                 <h3>基本操作</h3>
-                 <div class="control-grid">
-                    <button id="skip-backward">-10秒</button>
-                    <button id="skip-forward">+10秒</button>
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- カラー表示エリア -->
+            <div class="lg:col-span-1 flex flex-col items-center justify-center space-y-4 order-last lg:order-first">
+                <div id="colorDisplay"
+                    class="w-full h-48 rounded-lg border-4 border-gray-200 transition-colors duration-200 shadow-xl">
+                </div>
+                <div class="bg-gray-100 p-3 rounded-lg w-full text-center">
+                    <p class="text-sm font-medium text-gray-500">最終HEXコード</p>
+                    <div id="hexCode" class="text-2xl font-mono font-bold text-gray-800">#FFFFFF</div>
+                </div>
+
+                <!-- 混ぜる前の色サンプル -->
+                <div class="mt-4 w-full">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">🎨 混ぜる前の色</h3>
+                    <div class="flex justify-between space-x-2">
+                        <div id="colorA_base" class="w-1/3 h-12 rounded shadow border border-gray-300"></div>
+                        <div id="colorB_base" class="w-1/3 h-12 rounded shadow border border-gray-300"></div>
+                        <div id="colorC_base" class="w-1/3 h-12 rounded shadow border border-gray-300"></div>
+                    </div>
                 </div>
             </div>
 
-            <div class="control-group">
-                <h3>再生速度</h3>
-                <div class="slider-control">
-                    <input type="range" id="playback-rate" min="0.1" max="5.0" step="0.1" value="1.0">
-                    <span id="rate-value" class="value-display">1.0x</span>
-                    <button id="reset-rate" class="btn-reset">リセット</button>
-                </div>
-            </div>
-            
-            <div class="control-group">
-                <h3>表示倍率</h3>
-                <div class="slider-control">
-                    <input type="range" id="zoom-slider" min="1.0" max="2.0" step="0.05" value="1.0">
-                    <span id="zoom-value" class="value-display">1.0x</span>
-                    <button id="reset-zoom" class="btn-reset">リセット</button>
-                </div>
-            </div>
+            <!-- スライダーコントロールエリア -->
+            <div class="lg:col-span-3 space-y-8">
 
-            <div class="control-group">
-                <h3>AB間ループ再生</h3>
-                <div class="control-grid">
-                    <button id="add-favorite">現在位置を記録</button>
-                    <button id="loop-toggle">ループ再生OFF</button>
-                </div>
-                <div id="ab-info" class="ab-info">A点とB点を選択してください</div>
-                <div id="favorites-list" class="list-container" style="margin-top: 1rem;"></div>
-            </div>
-        </div>
+                <!-- 1. ベースカラーの定義 -->
+                <h2 class="text-xl font-semibold text-gray-700 pb-1 border-b">1. 3つのベース色（A, B, C）の定義 (CMYK配合)</h2>
 
-        <h2>再生履歴</h2>
-        <div id="history-list" class="list-container">
-            <p style="text-align: center; color: var(--text-muted-color);">履歴はありません</p>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                    <!-- カラー A -->
+                    <div class="p-4 bg-blue-50/50 rounded-lg border border-blue-200 space-y-3">
+                        <h3 class="font-bold text-blue-800">カラー A</h3>
+                        <div class="slider-container">
+                            <label for="c1Slider" class="text-xs font-medium text-gray-700 flex justify-between">C:
+                                <span id="c1Value" class="font-mono text-cyan-600">0</span>%</label>
+                            <input type="range" id="c1Slider" min="0" max="100" value="0" step="5"
+                                class="c-thumb accent-cyan-500">
+                        </div>
+                        <div class="slider-container">
+                            <label for="m1Slider" class="text-xs font-medium text-gray-700 flex justify-between">M:
+                                <span id="m1Value" class="font-mono text-pink-600">0</span>%</label>
+                            <input type="range" id="m1Slider" min="0" max="100" value="0" step="5"
+                                class="m-thumb accent-pink-500">
+                        </div>
+                        <div class="slider-container">
+                            <label for="y1Slider" class="text-xs font-medium text-gray-700 flex justify-between">Y:
+                                <span id="y1Value" class="font-mono text-yellow-600">0</span>%</label>
+                            <input type="range" id="y1Slider" min="0" max="100" value="0" step="5"
+                                class="y-thumb accent-yellow-500">
+                        </div>
+                        <div class="slider-container">
+                            <label for="k1Slider" class="text-xs font-medium text-gray-700 flex justify-between">K:
+                                <span id="k1Value" class="font-mono text-gray-800">0</span>%</label>
+                            <input type="range" id="k1Slider" min="0" max="100" value="0" step="5"
+                                class="k-thumb accent-gray-700">
+                        </div>
+                    </div>
+
+                    <!-- カラー B -->
+                    <div class="p-4 bg-green-50/50 rounded-lg border border-green-200 space-y-3">
+                        <h3 class="font-bold text-green-800">カラー B</h3>
+                        <div class="slider-container">
+                            <label for="c2Slider" class="text-xs font-medium text-gray-700 flex justify-between">C:
+                                <span id="c2Value" class="font-mono text-cyan-600">0</span>%</label>
+                            <input type="range" id="c2Slider" min="0" max="100" value="0" step="5"
+                                class="c-thumb accent-cyan-500">
+                        </div>
+                        <div class="slider-container">
+                            <label for="m2Slider" class="text-xs font-medium text-gray-700 flex justify-between">M:
+                                <span id="m2Value" class="font-mono text-pink-600">0</span>%</label>
+                            <input type="range" id="m2Slider" min="0" max="100" value="0" step="5"
+                                class="m-thumb accent-pink-500">
+                        </div>
+                        <div class="slider-container">
+                            <label for="y2Slider" class="text-xs font-medium text-gray-700 flex justify-between">Y:
+                                <span id="y2Value" class="font-mono text-yellow-600">0</span>%</label>
+                            <input type="range" id="y2Slider" min="0" max="100" value="0" step="5"
+                                class="y-thumb accent-yellow-500">
+                        </div>
+                        <div class="slider-container">
+                            <label for="k2Slider" class="text-xs font-medium text-gray-700 flex justify-between">K:
+                                <span id="k2Value" class="font-mono text-gray-800">0</span>%</label>
+                            <input type="range" id="k2Slider" min="0" max="100" value="0" step="5"
+                                class="k-thumb accent-gray-700">
+                        </div>
+                    </div>
+
+                    <!-- カラー C -->
+                    <div class="p-4 bg-pink-50/50 rounded-lg border border-pink-200 space-y-3">
+                        <h3 class="font-bold text-pink-800">カラー C</h3>
+                        <div class="slider-container">
+                            <label for="c3Slider" class="text-xs font-medium text-gray-700 flex justify-between">C:
+                                <span id="c3Value" class="font-mono text-cyan-600">0</span>%</label>
+                            <input type="range" id="c3Slider" min="0" max="100" value="0" step="5"
+                                class="c-thumb accent-cyan-500">
+                        </div>
+                        <div class="slider-container">
+                            <label for="m3Slider" class="text-xs font-medium text-gray-700 flex justify-between">M:
+                                <span id="m3Value" class="font-mono text-pink-600">0</span>%</label>
+                            <input type="range" id="m3Slider" min="0" max="100" value="0" step="5"
+                                class="m-thumb accent-pink-500">
+                        </div>
+                        <div class="slider-container">
+                            <label for="y3Slider" class="text-xs font-medium text-gray-700 flex justify-between">Y:
+                                <span id="y3Value" class="font-mono text-yellow-600">0</span>%</label>
+                            <input type="range" id="y3Slider" min="0" max="100" value="0" step="5"
+                                class="y-thumb accent-yellow-500">
+                        </div>
+                        <div class="slider-container">
+                            <label for="k3Slider" class="text-xs font-medium text-gray-700 flex justify-between">K:
+                                <span id="k3Value" class="font-mono text-gray-800">0</span>%</label>
+                            <input type="range" id="k3Slider" min="0" max="100" value="0" step="5"
+                                class="k-thumb accent-gray-700">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. 3色の混合比率 -->
+                <h2 class="text-xl font-semibold text-gray-700 pt-4 pb-1 border-b">2. ベース色の混合比率 (加法混色・RGB)</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                    <div class="slider-container">
+                        <label for="ratio1Slider" class="text-sm font-medium text-gray-700 flex justify-between">
+                            <span>🧪 混合比率 A:</span>
+                            <span id="ratio1Value" class="font-mono text-indigo-600">0</span>%
+                        </label>
+                        <input type="range" id="ratio1Slider" min="0" max="100" value="0" step="5"
+                            class="ratio-thumb accent-indigo-500">
+                    </div>
+
+                    <div class="slider-container">
+                        <label for="ratio2Slider" class="text-sm font-medium text-gray-700 flex justify-between">
+                            <span>🧪 混合比率 B:</span>
+                            <span id="ratio2Value" class="font-mono text-indigo-600">0</span>%
+                        </label>
+                        <input type="range" id="ratio2Slider" min="0" max="100" value="0" step="5"
+                            class="ratio-thumb accent-indigo-500">
+                    </div>
+
+                    <div class="slider-container">
+                        <label for="ratio3Slider" class="text-sm font-medium text-gray-700 flex justify-between">
+                            <span>🧪 混合比率 C:</span>
+                            <span id="ratio3Value" class="font-mono text-indigo-600">0</span>%
+                        </label>
+                        <input type="range" id="ratio3Slider" min="0" max="100" value="0" step="5"
+                            class="ratio-thumb accent-indigo-500">
+                    </div>
+
+                </div>
+
+                <!-- 3. 最終的な彩度と明度の調整 -->
+                <h2 class="text-xl font-semibold text-gray-700 pt-4 pb-1 border-b">3. 最終色の調整 (HSV)</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="slider-container">
+                        <label for="saturationSlider" class="text-sm font-medium text-gray-700 flex justify-between">
+                            <span>🌈 彩度 (S):</span>
+                            <span id="saturationValue" class="font-mono text-blue-600">100</span>%
+                        </label>
+                        <input type="range" id="saturationSlider" min="0" max="100" value="100" step="5"
+                            class="accent-blue-500">
+                    </div>
+
+                    <div class="slider-container">
+                        <label for="valueSlider" class="text-sm font-medium text-gray-700 flex justify-between">
+                            <span>💡 明度 (V/明るさ):</span>
+                            <span id="valueValue" class="font-mono text-green-600">100</span>%
+                        </label>
+                        <input type="range" id="valueSlider" min="0" max="100" value="100" step="5"
+                            class="accent-green-500">
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
 
     <script>
-        // --- 1. グローバル変数と初期設定 ---
-        let player;
-        let history = [];
-        let favorites = [];
-        let loopInterval, timeUpdateInterval;
-        let isLooping = false;
-        let isSeeking = false;
-        let loopA = -1, loopB = -1;
-        let isPlayerReady = false;
-        const MAX_HISTORY_COUNT = 10;
+        // DOM要素の取得
+        const $ = (id) => document.getElementById(id);
 
-        // --- 2. YouTube IFrame Player APIのセットアップ ---
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-        
-        function onYouTubeIframeAPIReady() {}
+        // CMYKスライダー (3セット)
+        const c1Slider = $('c1Slider'), m1Slider = $('m1Slider'), y1Slider = $('y1Slider'), k1Slider = $('k1Slider');
+        const c2Slider = $('c2Slider'), m2Slider = $('m2Slider'), y2Slider = $('y2Slider'), k2Slider = $('k2Slider');
+        const c3Slider = $('c3Slider'), m3Slider = $('m3Slider'), y3Slider = $('y3Slider'), k3Slider = $('k3Slider');
 
-        function createPlayer(videoId, startSeconds = 0) {
-            if (player) player.destroy();
-            player = new YT.Player('player', {
-                videoId: videoId,
-                playerVars: { 'playsinline': 1, 'rel': 0, 'start': Math.floor(startSeconds) },
-                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
-            });
-        }
-        
-        function onPlayerReady(event) {
-            isPlayerReady = true;
-            document.getElementById('controls').style.display = 'block';
-            updateVideoTitle();
-            loadFavorites();
-            updateFavoritesUI();
-            
-            const duration = player.getDuration();
-            document.getElementById('seek-bar').max = duration;
+        // 混合比率スライダー
+        const ratio1Slider = $('ratio1Slider'), ratio2Slider = $('ratio2Slider'), ratio3Slider = $('ratio3Slider');
 
-            event.target.playVideo();
-        }
+        // 最終調整スライダー
+        const saturationSlider = $('saturationSlider');
+        const valueSlider = $('valueSlider');
 
-        function onPlayerStateChange(event) {
-            clearInterval(timeUpdateInterval);
-            if (event.data == YT.PlayerState.PLAYING) {
-                timeUpdateInterval = setInterval(updateTime, 250);
+        // 表示要素
+        const colorDisplay = $('colorDisplay');
+        const hexCode = $('hexCode');
+        const colorABase = $('colorA_base');
+        const colorBBase = $('colorB_base');
+        const colorCBase = $('colorC_base');
+
+        /**
+         * RGBからHSVへ変換する関数 (0-255 -> H:0-360, S:0-1, V:0-1)
+         */
+        function rgbToHsv(r, g, b) {
+            r /= 255, g /= 255, b /= 255;
+            let max = Math.max(r, g, b), min = Math.min(r, g, b);
+            let h, s, v = max;
+
+            let d = max - min;
+            s = max === 0 ? 0 : d / max;
+
+            if (max === min) {
+                h = 0; // 無彩色
             } else {
-                saveCurrentVideoHistory();
+                switch (max) {
+                    case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                    case g: h = (b - r) / d + 2; break;
+                    case b: h = (r - g) / d + 4; break;
+                }
+                h /= 6;
             }
-        }
-        
-        // --- 3. UIイベントリスナー ---
-        document.addEventListener('DOMContentLoaded', () => {
-            loadHistory();
-            updateHistoryUI();
-
-            document.getElementById('load-video').addEventListener('click', loadVideoFromInput);
-            document.getElementById('skip-backward').addEventListener('click', () => skip(-10));
-            document.getElementById('skip-forward').addEventListener('click', () => skip(10));
-
-            // 再生速度スライダー
-            const rateSlider = document.getElementById('playback-rate');
-            rateSlider.addEventListener('input', () => setPlaybackRate(rateSlider.value));
-            document.getElementById('reset-rate').addEventListener('click', () => {
-                rateSlider.value = 1.0;
-                setPlaybackRate(1.0);
-            });
-            
-            // ズームスライダー
-            const zoomSlider = document.getElementById('zoom-slider');
-            zoomSlider.addEventListener('input', () => setZoom(zoomSlider.value));
-            document.getElementById('reset-zoom').addEventListener('click', () => {
-                zoomSlider.value = 1.0;
-                setZoom(1.0);
-            });
-            
-            document.getElementById('add-favorite').addEventListener('click', addFavorite);
-            document.getElementById('loop-toggle').addEventListener('click', toggleLoop);
-            
-            // シークバー
-            const seekBar = document.getElementById('seek-bar');
-            seekBar.addEventListener('mousedown', () => { isSeeking = true; });
-            seekBar.addEventListener('touchstart', () => { isSeeking = true; });
-            seekBar.addEventListener('input', () => {
-                if(isPlayerReady) player.seekTo(seekBar.value, false);
-            });
-            seekBar.addEventListener('change', () => {
-                if(isPlayerReady) player.seekTo(seekBar.value, true);
-                isSeeking = false;
-            });
-            seekBar.addEventListener('mouseup', () => { isSeeking = false; });
-            seekBar.addEventListener('touchend', () => { isSeeking = false; });
-            
-            window.addEventListener('pagehide', saveCurrentVideoHistory);
-        });
-        
-        // --- 4. 主要機能 ---
-        function loadVideoFromInput() {
-            const url = document.getElementById('video-url').value;
-            const videoId = parseVideoId(url);
-            if (videoId) createPlayer(videoId);
-            else alert('有効なYouTube URLまたは動画IDを入力してください。');
+            return { h: h * 360, s: s, v: v }; // H: 0-360, S: 0-1, V: 0-1
         }
 
-        function parseVideoId(url) {
-            if (!url) return null;
-            let videoId = url.split('v=')[1];
-            if (videoId) {
-                const ampersandPosition = videoId.indexOf('&');
-                if (ampersandPosition !== -1) videoId = videoId.substring(0, ampersandPosition);
-                return videoId;
+        /**
+         * HSVからRGBへ変換する関数 (H:0-360, S:0-1, V:0-1 -> 0-255)
+         */
+        function hsvToRgb(h, s, v) {
+            let r, g, b;
+            let i = Math.floor(h / 60);
+            let f = h / 60 - i;
+            let p = v * (1 - s);
+            let q = v * (1 - f * s);
+            let t = v * (1 - (1 - f) * s);
+
+            switch (i % 6) {
+                case 0: r = v, g = t, b = p; break;
+                case 1: r = q, g = v, b = p; break;
+                case 2: r = p, g = v, b = t; break;
+                case 3: r = p, g = q, b = v; break;
+                case 4: r = t, g = p, b = v; break;
+                case 5: r = v, g = p, b = q; break;
             }
-            if (url.includes('youtu.be/')) return url.split('youtu.be/')[1].split('?')[0];
-            if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
-            return null;
-        }
 
-        function skip(seconds) {
-            if (!isPlayerReady) return;
-            player.seekTo(player.getCurrentTime() + seconds, true);
-        }
-
-        function setPlaybackRate(rate) {
-            if (!isPlayerReady) return;
-            player.setPlaybackRate(parseFloat(rate));
-            document.getElementById('rate-value').textContent = `${parseFloat(rate).toFixed(1)}x`;
-        }
-
-        function setZoom(scale) {
-            document.getElementById('player-wrapper').style.transform = `scale(${scale})`;
-            document.getElementById('zoom-value').textContent = `${parseFloat(scale).toFixed(1)}x`;
-        }
-        
-        function updateVideoTitle() {
-            if (!isPlayerReady) return;
-            document.getElementById('video-title').textContent = player.getVideoData().title;
-        }
-
-        function updateTime() {
-            if (!isPlayerReady || !player.getCurrentTime) return;
-            const currentTime = player.getCurrentTime();
-            const duration = player.getDuration();
-            if (!isSeeking) {
-                document.getElementById('seek-bar').value = currentTime;
-            }
-            document.getElementById('time-display').textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
-            saveCurrentVideoHistory(); // 定期的に履歴保存
-        }
-
-        // --- 5. 再生履歴機能 ---
-        function saveCurrentVideoHistory() {
-            if (!isPlayerReady || !player.getVideoData || !player.getVideoData().video_id) return;
-            
-            const videoData = player.getVideoData();
-            const newEntry = {
-                videoId: videoData.video_id,
-                title: videoData.title,
-                timestamp: player.getCurrentTime(),
+            return {
+                r: Math.min(255, Math.max(0, Math.round(r * 255))),
+                g: Math.min(255, Math.max(0, Math.round(g * 255))),
+                b: Math.min(255, Math.max(0, Math.round(b * 255)))
             };
-            
-            history = history.filter(item => item.videoId !== newEntry.videoId);
-            history.unshift(newEntry);
-            if (history.length > MAX_HISTORY_COUNT) history.pop();
-            
-            localStorage.setItem('youtubeHistory', JSON.stringify(history));
-            updateHistoryUI();
         }
 
-        function loadHistory() {
-            const storedHistory = localStorage.getItem('youtubeHistory');
-            if (storedHistory) history = JSON.parse(storedHistory);
+        /**
+         * RGB値を16進数コードに変換する関数
+         */
+        function rgbToHex(r, g, b) {
+            const toHex = (c) => {
+                const hex = c.toString(16);
+                return hex.length === 1 ? "0" + hex : hex;
+            };
+            return "#" + toHex(r) + toHex(g) + toHex(b);
         }
 
-        function updateHistoryUI() {
-            const listEl = document.getElementById('history-list');
-            listEl.innerHTML = '';
-            
-            if (history.length === 0) {
-                listEl.innerHTML = '<p style="text-align: center; color: var(--text-muted-color);">履歴はありません</p>';
-                return;
+        /**
+         * CMYK値 (0-100) から RGB値 (0-255) を算出する関数 (減法混色モデル)
+         */
+        function cmykToRgb(c, m, y, k) {
+            // 0-1に正規化
+            const C_n = c / 100;
+            const M_n = m / 100;
+            const Y_n = y / 100;
+            const K_n = k / 100;
+
+            // CMYK to RGB (0-1) formula: 1 - min(1, C * (1 - K) + K)
+            const R_n = 1 - Math.min(1, C_n * (1 - K_n) + K_n);
+            const G_n = 1 - Math.min(1, M_n * (1 - K_n) + K_n);
+            const B_n = 1 - Math.min(1, Y_n * (1 - K_n) + K_n);
+
+            return {
+                r: Math.round(R_n * 255),
+                g: Math.round(G_n * 255),
+                b: Math.round(B_n * 255)
+            };
+        }
+
+        // 全てのスライダーの変更を処理するメイン関数
+        function updateColor() {
+            // 1. スライダー値の取得
+            const C1 = parseInt(c1Slider.value), M1 = parseInt(m1Slider.value), Y1 = parseInt(y1Slider.value), K1 = parseInt(k1Slider.value);
+            const C2 = parseInt(c2Slider.value), M2 = parseInt(m2Slider.value), Y2 = parseInt(y2Slider.value), K2 = parseInt(k2Slider.value);
+            const C3 = parseInt(c3Slider.value), M3 = parseInt(m3Slider.value), Y3 = parseInt(y3Slider.value), K3 = parseInt(k3Slider.value);
+
+            const R1 = parseInt(ratio1Slider.value);
+            const R2 = parseInt(ratio2Slider.value);
+            const R3 = parseInt(ratio3Slider.value);
+
+            const S_final = parseInt(saturationSlider.value) / 100; // 0-1
+            const V_final = parseInt(valueSlider.value) / 100; // 0-1
+
+            // 画面上の表示値を更新
+            $('c1Value').textContent = C1; $('m1Value').textContent = M1; $('y1Value').textContent = Y1; $('k1Value').textContent = K1;
+            $('c2Value').textContent = C2; $('m2Value').textContent = M2; $('y2Value').textContent = Y2; $('k2Value').textContent = K2;
+            $('c3Value').textContent = C3; $('m3Value').textContent = M3; $('y3Value').textContent = Y3; $('k3Value').textContent = K3;
+
+            $('ratio1Value').textContent = R1;
+            $('ratio2Value').textContent = R2;
+            $('ratio3Value').textContent = R3;
+            $('saturationValue').textContent = S_final * 100;
+            $('valueValue').textContent = V_final * 100;
+
+
+            // 2. CMYKの調色（3つのベース色をRGBで取得）
+            const rgbA = cmykToRgb(C1, M1, Y1, K1);
+            const rgbB = cmykToRgb(C2, M2, Y2, K2);
+            const rgbC = cmykToRgb(C3, M3, Y3, K3);
+
+            // 混ぜる前の色サンプルを更新
+            colorABase.style.backgroundColor = rgbToHex(rgbA.r, rgbA.g, rgbA.b);
+            colorBBase.style.backgroundColor = rgbToHex(rgbB.r, rgbB.g, rgbB.b);
+            colorCBase.style.backgroundColor = rgbToHex(rgbC.r, rgbC.g, rgbC.b);
+
+            // 3. 3色の混合（加法混色・RGBでの平均）
+            const totalRatio = R1 + R2 + R3;
+            let R_mixed, G_mixed, B_mixed;
+
+            if (totalRatio === 0) {
+                // 比率が全て0の場合は白（無色）
+                R_mixed = 255;
+                G_mixed = 255;
+                B_mixed = 255;
+            } else {
+                // 重み付き平均で色を混ぜる
+                R_mixed = (rgbA.r * R1 + rgbB.r * R2 + rgbC.r * R3) / totalRatio;
+                G_mixed = (rgbA.g * R1 + rgbB.g * R2 + rgbC.g * R3) / totalRatio;
+                B_mixed = (rgbA.b * R1 + rgbB.b * R2 + rgbC.b * R3) / totalRatio;
             }
 
-            history.forEach(item => {
-                const div = document.createElement('div');
-                div.className = 'list-item clickable';
-                div.innerHTML = `<span class="title">${item.title}</span><span class="timestamp">${formatTime(item.timestamp)}</span>`;
-                div.addEventListener('click', () => {
-                    if (player && player.getVideoData().video_id === item.videoId) {
-                        player.seekTo(item.timestamp, true);
-                        player.playVideo();
-                    } else {
-                        createPlayer(item.videoId, item.timestamp);
-                    }
-                });
-                listEl.appendChild(div);
+            // 4. 混合色をHSVに変換し、最終S/Vを適用
+            const hsvMixed = rgbToHsv(R_mixed, G_mixed, B_mixed);
+            let H_final = hsvMixed.h;
+
+            // 混合色が完全に無彩色（白黒グレー）の場合、Hueは無意味なので0にリセット
+            if (hsvMixed.s < 0.01) {
+                H_final = 0;
+            }
+
+            // 最終HSVからRGBを計算
+            const rgbFinal = hsvToRgb(H_final, S_final, V_final);
+
+            // 5. 表示の更新
+            const hexFinal = rgbToHex(rgbFinal.r, rgbFinal.g, rgbFinal.b);
+            colorDisplay.style.backgroundColor = hexFinal;
+            hexCode.textContent = hexFinal;
+
+            // 背景色に応じてHEXコードの文字色を調整 (視認性確保のため)
+            const luminance = (0.299 * rgbFinal.r + 0.587 * rgbFinal.g + 0.114 * rgbFinal.b) / 255;
+            hexCode.classList.toggle('text-white', luminance < 0.5);
+            hexCode.classList.toggle('text-gray-800', luminance >= 0.5);
+        }
+
+        // 初期設定とイベントリスナーの登録
+        function init() {
+            // すべてのスライダー要素を取得
+            const sliders = document.querySelectorAll('input[type="range"]');
+            sliders.forEach(slider => {
+                slider.addEventListener('input', updateColor);
             });
-        }
-        
-        // --- 6. AB間ループ再生機能 ---
-        function loadFavorites() {
-            if (!isPlayerReady) return;
-            const videoId = player.getVideoData().video_id;
-            favorites = JSON.parse(localStorage.getItem(`youtubeFavorites_${videoId}`) || '[]');
-        }
-        
-        function saveFavorites() {
-            if (!isPlayerReady) return;
-            const videoId = player.getVideoData().video_id;
-            localStorage.setItem(`youtubeFavorites_${videoId}`, JSON.stringify(favorites));
+
+            // 初期値として、カラーAと比率Aを少し設定
+            c1Slider.value = 80;
+            m1Slider.value = 30;
+            ratio1Slider.value = 50;
+
+            // ページロード時に一度実行
+            updateColor();
         }
 
-        function addFavorite() {
-            if (!isPlayerReady) return;
-            const currentTime = player.getCurrentTime();
-            if (!favorites.some(fav => fav.time === currentTime)) {
-                favorites.push({ time: currentTime });
-                favorites.sort((a, b) => a.time - b.time);
-                saveFavorites();
-                updateFavoritesUI();
-            }
-        }
-        
-        function deleteFavorite(timeToDelete) {
-            favorites = favorites.filter(fav => fav.time !== timeToDelete);
-            saveFavorites();
-            // 削除されたポイントがA or Bに設定されていたらリセット
-            if (loopA === timeToDelete || loopB === timeToDelete) {
-                loopA = -1;
-                loopB = -1;
-                if(isLooping) toggleLoop(); // ループ中なら停止
-                updateLoopPoints();
-            }
-            updateFavoritesUI();
-        }
+        window.onload = init;
+    </script>
+</body>
 
-        function updateFavoritesUI() {
-            const listEl = document.getElementById('favorites-list');
-            listEl.innerHTML = '';
-
-            if (favorites.length === 0) {
-                listEl.innerHTML = '<p style="text-align: center; color: var(--text-muted-color);">記録されたポイントはありません</p>';
-                return;
-            }
-
-            favorites.forEach(fav => {
-                const div = document.createElement('div');
-                div.className = 'list-item';
-                div.innerHTML = `
-                    <span class="timestamp">${formatTime(fav.time)}</span>
-                    <div class="ab-selector">
-                        <label>A<input type="radio" name="loopPointA" value="${fav.time}"></label>
-                        <label>B<input type="radio" name="loopPointB" value="${fav.time}"></label>
-                    </div>
-                    <div class="actions">
-                        <button class="btn-delete" data-time="${fav.time}">削除</button>
-                    </div>
-                `;
-                listEl.appendChild(div);
-            });
-
-            document.querySelectorAll('input[name="loopPointA"], input[name="loopPointB"]').forEach(radio => {
-                radio.addEventListener('change', updateLoopPoints);
-            });
-            document.querySele
+</html>
